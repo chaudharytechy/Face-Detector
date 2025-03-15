@@ -106,7 +106,6 @@
 // };
 
 // export default FaceDetection;
-
 import React, { useEffect, useRef, useState } from "react";
 import * as faceapi from "face-api.js";
 
@@ -115,6 +114,8 @@ const FaceDetection = () => {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [mood, setMood] = useState("Waiting...");
   const [joke, setJoke] = useState("No joke yet");
+  const [translatedJoke, setTranslatedJoke] = useState("");
+  const [language, setLanguage] = useState("en");
   const [detecting, setDetecting] = useState(false);
 
   const loadModels = async () => {
@@ -170,9 +171,23 @@ const FaceDetection = () => {
       const response = await fetch("https://v2.jokeapi.dev/joke/Any?type=single");
       const data = await response.json();
       setJoke(data.joke || "Couldn't fetch a joke.");
+      translateJoke(data.joke || "Couldn't fetch a joke.");
     } catch (error) {
       console.error("Error fetching joke:", error);
       setJoke("Error fetching joke");
+    }
+  };
+
+  const translateJoke = async (text) => {
+    try {
+      const response = await fetch(
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${language}|${language === "en" ? "hi" : "en"}`
+      );
+      const data = await response.json();
+      setTranslatedJoke(data.responseData.translatedText || "Translation error");
+    } catch (error) {
+      console.error("Error translating joke:", error);
+      setTranslatedJoke("Translation error");
     }
   };
 
@@ -203,12 +218,7 @@ const FaceDetection = () => {
           className="rounded-lg shadow-lg border-4 border-blue-500"
         />
       </div>
-      <button
-        onClick={() => setDetecting(true)}
-        className="mt-4 px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300"
-      >
-        🔄 Detect Again
-      </button>
+
       <div className="bg-gray-800 p-4 rounded-lg shadow-md w-96 mt-4">
         <p className="text-lg font-semibold">
           <span className="text-yellow-400">Detected Mood:</span> {mood}
@@ -216,11 +226,27 @@ const FaceDetection = () => {
         <p className="text-lg mt-2">
           <span className="text-green-400 font-semibold">Joke:</span> {joke}
         </p>
+        <p className="text-lg mt-2">
+          <span className="text-purple-400 font-semibold">Translated Joke:</span> {translatedJoke}
+        </p>
       </div>
 
-   
+      <button
+        onClick={() => setDetecting(true)}
+        className="mt-4 px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300"
+      >
+        🔄 Detect Again
+      </button>
+
+      <button
+        onClick={() => setLanguage(language === "en" ? "hi" : "en")}
+        className="mt-4 px-5 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300"
+      >
+        {language === "en" ? "🇮🇳 Translate to Hindi" : "🇺🇸 Translate to English"}
+      </button>
     </div>
   );
 };
 
 export default FaceDetection;
+
