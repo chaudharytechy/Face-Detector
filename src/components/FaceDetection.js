@@ -203,7 +203,12 @@ const FaceDetection = () => {
           className="rounded-lg shadow-lg border-4 border-blue-500"
         />
       </div>
-
+      <button
+        onClick={() => setDetecting(true)}
+        className="mt-4 px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300"
+      >
+        🔄 Detect Again
+      </button>
       <div className="bg-gray-800 p-4 rounded-lg shadow-md w-96 mt-4">
         <p className="text-lg font-semibold">
           <span className="text-yellow-400">Detected Mood:</span> {mood}
@@ -213,12 +218,7 @@ const FaceDetection = () => {
         </p>
       </div>
 
-      <button
-        onClick={() => setDetecting(true)}
-        className="mt-4 px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300"
-      >
-        🔄 Detect Again
-      </button>
+   
     </div>
   );
 };
