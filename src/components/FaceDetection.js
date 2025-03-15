@@ -107,7 +107,6 @@
 
 // export default FaceDetection;
 
-
 import React, { useEffect, useRef, useState } from "react";
 import * as faceapi from "face-api.js";
 
@@ -146,7 +145,7 @@ const FaceDetection = () => {
   };
 
   const detectMood = async () => {
-    if (!videoRef.current || !detecting) return;
+    if (!videoRef.current) return;
     try {
       const detections = await faceapi
         .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
@@ -159,6 +158,7 @@ const FaceDetection = () => {
         );
         setMood(maxExpression);
         fetchJoke();
+        setDetecting(false);
       }
     } catch (error) {
       console.error("Error detecting face:", error);
@@ -183,8 +183,7 @@ const FaceDetection = () => {
 
   useEffect(() => {
     if (modelsLoaded && detecting) {
-      const interval = setInterval(detectMood, 3000);
-      return () => clearInterval(interval);
+      detectMood();
     }
   }, [modelsLoaded, detecting]);
 
@@ -215,10 +214,10 @@ const FaceDetection = () => {
       </div>
 
       <button
-        onClick={() => setDetecting((prev) => !prev)}
+        onClick={() => setDetecting(true)}
         className="mt-4 px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300"
       >
-        {detecting ? "⏹ Stop Detection" : "🔄 Start Detection"}
+        🔄 Detect Again
       </button>
     </div>
   );
