@@ -1,111 +1,3 @@
-// import React, { useEffect, useRef, useState } from "react";
-// import * as faceapi from "face-api.js";
-
-// const FaceDetection = () => {
-//   const videoRef = useRef(null);
-//   const [modelsLoaded, setModelsLoaded] = useState(false);
-//   const [mood, setMood] = useState("");
-//   const [joke, setJoke] = useState("");
-//   const [detecting, setDetecting] = useState(true);
-
-//   const loadModels = async () => {
-//     try {
-//       await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
-//       await faceapi.nets.faceExpressionNet.loadFromUri("/models");
-//       setModelsLoaded(true);
-//     } catch (error) {
-//       console.error("Error loading models:", error);
-//     }
-//   };
-
-//   const startVideo = () => {
-//     navigator.mediaDevices
-//       .getUserMedia({ video: {} })
-//       .then((stream) => {
-//         videoRef.current.srcObject = stream;
-//       })
-//       .catch((err) => console.error("Error accessing webcam:", err));
-//   };
-
-//   const detectMood = async () => {
-//     if (videoRef.current && detecting) {
-//       const detections = await faceapi
-//         .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
-//         .withFaceExpressions();
-
-//       if (detections && detections.expressions) {
-//         const expressions = detections.expressions;
-//         const maxExpression = Object.keys(expressions).reduce((a, b) =>
-//           expressions[a] > expressions[b] ? a : b
-//         );
-//         setMood(maxExpression);
-//         generateJoke();
-//         setDetecting(false);
-//       }
-//     }
-//   };
-
-//   const generateJoke = async () => {
-//     try {
-//       const response = await fetch(`https://v2.jokeapi.dev/joke/Any?type=single`);
-//       const data = await response.json();
-//       setJoke(data.joke || "Couldn't fetch a joke.");
-//     } catch (error) {
-//       console.error("Error fetching joke:", error);
-//     }
-//   };
-
-//   useEffect(() => {
-//     loadModels();
-//     startVideo();
-//   }, []);
-
-//   useEffect(() => {
-//     if (modelsLoaded && detecting) {
-//       const interval = setInterval(detectMood, 2000);
-//       return () => clearInterval(interval);
-//     }
-//   }, [modelsLoaded, detecting]);
-
-//   return (
-//     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-6">
-//       <h2 className="text-3xl font-bold mb-4 text-center text-blue-400">
-//         Mood-Based Joke Generator
-//       </h2>
-      
-//       <div className="relative">
-//         <video
-//           ref={videoRef}
-//           autoPlay
-//           playsInline
-//           width="500"
-//           height="400"
-//           className="rounded-lg shadow-lg border-4 border-blue-500"
-//         />
-//       </div>
-
-//       <div className="bg-gray-800 p-4 rounded-lg shadow-md w-96 mt-4">
-//         <p className="text-lg font-semibold">
-//           <span className="text-yellow-400">Detected Mood:</span> {mood || "Waiting..."}
-//         </p>
-//         <p className="text-lg mt-2">
-//           <span className="text-green-400 font-semibold">Joke:</span> {joke || "No joke yet"}
-//         </p>
-//       </div>
-
-//       {!detecting && (
-//         <button
-//           onClick={() => setDetecting(true)}
-//           className="mt-4 px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300"
-//         >
-//           🔄 Detect Again
-//         </button>
-//       )}
-//     </div>
-//   );
-// };
-
-// export default FaceDetection;
 import React, { useEffect, useRef, useState } from "react";
 import * as faceapi from "face-api.js";
 
@@ -116,8 +8,9 @@ const FaceDetection = () => {
   const [joke, setJoke] = useState("No joke yet");
   const [translatedJoke, setTranslatedJoke] = useState("");
   const [language, setLanguage] = useState("en");
-  const [detecting, setDetecting] = useState(false);
+  const [startFaceDetect, setStartFaceDetect] = useState(false);
 
+  // Load face-api models
   const loadModels = async () => {
     try {
       const modelPath = window.location.origin + "/models";
@@ -129,13 +22,13 @@ const FaceDetection = () => {
     }
   };
 
+  // Start webcam
   const startVideo = async () => {
     try {
-      const constraints = {
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user" },
-        audio: false
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        audio: false,
+      });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
@@ -145,43 +38,65 @@ const FaceDetection = () => {
     }
   };
 
+  // Stop webcam and reset state
+  const stopVideo = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject;
+      stream.getTracks().forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
+    }
+
+    // Reset UI and state
+    setMood("Waiting...");
+    setJoke("No joke yet");
+    setTranslatedJoke("");
+    setModelsLoaded(false);
+  };
+
+  // Detect facial expression
   const detectMood = async () => {
     if (!videoRef.current) return;
+
     try {
-      const detections = await faceapi
+      const detection = await faceapi
         .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
         .withFaceExpressions();
 
-      if (detections && detections.expressions) {
-        const expressions = detections.expressions;
-        const maxExpression = Object.keys(expressions).reduce((a, b) =>
+      if (detection?.expressions) {
+        const expressions = detection.expressions;
+        const detectedMood = Object.keys(expressions).reduce((a, b) =>
           expressions[a] > expressions[b] ? a : b
         );
-        setMood(maxExpression);
-        fetchJoke();
-        setDetecting(false);
+
+        setMood(detectedMood); // Always set mood
+        fetchJoke(); // Always fetch new joke
       }
     } catch (error) {
-      console.error("Error detecting face:", error);
+      console.error("Error detecting mood:", error);
     }
   };
 
+  // Fetch joke
   const fetchJoke = async () => {
     try {
       const response = await fetch("https://v2.jokeapi.dev/joke/Any?type=single");
       const data = await response.json();
-      setJoke(data.joke || "Couldn't fetch a joke.");
-      translateJoke(data.joke || "Couldn't fetch a joke.");
+      const jokeText = data.joke || "Couldn't fetch a joke.";
+      setJoke(jokeText);
+      translateJoke(jokeText);
     } catch (error) {
       console.error("Error fetching joke:", error);
       setJoke("Error fetching joke");
     }
   };
 
+  // Translate joke
   const translateJoke = async (text) => {
     try {
       const response = await fetch(
-        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${language}|${language === "en" ? "hi" : "en"}`
+        `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${language}|${
+          language === "en" ? "hi" : "en"
+        }`
       );
       const data = await response.json();
       setTranslatedJoke(data.responseData.translatedText || "Translation error");
@@ -191,62 +106,78 @@ const FaceDetection = () => {
     }
   };
 
+  // Load models and start camera when "Start" is clicked
   useEffect(() => {
-    loadModels();
-    startVideo();
-  }, []);
+    if (startFaceDetect) {
+      loadModels();
+      startVideo();
+    } else {
+      stopVideo();
+    }
+  }, [startFaceDetect]);
 
+  // Detect once after models are loaded and face detection is started
   useEffect(() => {
-    if (modelsLoaded && detecting) {
+    if (modelsLoaded && startFaceDetect) {
       detectMood();
     }
-  }, [modelsLoaded, detecting]);
+  }, [modelsLoaded, startFaceDetect]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white p-6">
-      <h2 className="text-3xl font-bold mb-4 text-center text-blue-400">
-        Mood-Based Joke Generator
-      </h2>
+    <div className="">
+      <h5 className="text-white fw-bolder">
+        Mood-Based Joke Generator 🎭😂
+        <small
+          onClick={() => setStartFaceDetect((prev) => !prev)}
+          className="cursor-pointer ms-2 text-decoration-underline"
+        >
+          {startFaceDetect ? "Stop" : "Start"}
+        </small>
+      </h5>
 
-      <div className="relative">
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          width="500"
-          height="400"
-          className="rounded-lg shadow-lg border-4 border-blue-500"
-        />
+      {startFaceDetect && (
+        <div>
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            width="90%"
+            height="45%"
+            className="rounded-4 shadow-lg border-4 border-blue-500"
+          />
+        </div>
+      )}
+
+      <div className="d-flex my-3">
+        <button onClick={detectMood} className="btn btn-sm btn-outline-light me-2">
+          <small className="fw-bold">🔄 Detect</small>
+        </button>
+        <button
+          onClick={() => setLanguage(language === "en" ? "hi" : "en")}
+          className="btn btn-sm btn-outline-light"
+        >
+          <small className="fw-medium">
+            {language === "en" ? "🇮🇳 Translate to Hindi" : "🇺🇸 Translate to English"}
+          </small>
+        </button>
       </div>
 
-      <div className="bg-gray-800 p-4 rounded-lg shadow-md w-96 mt-4">
-        <p className="text-lg font-semibold">
-          <span className="text-yellow-400">Detected Mood:</span> {mood}
+      <div>
+        <p>
+          <span className="fw-normal text-white">Detected Mood:</span>{" "}
+          <small className="fw-light text-secondary">{mood}</small>
         </p>
-        <p className="text-lg mt-2">
-          <span className="text-green-400 font-semibold">Joke:</span> {joke}
+        <p className="fw-normal text-white">
+          <span className="fw-normal text-white">Joke:</span>{" "}
+          <small className="fw-light text-white">{joke}</small>
         </p>
-        <p className="text-lg mt-2">
-          <span className="text-purple-400 font-semibold">Translated Joke:</span> {translatedJoke}
+        <p>
+          <span className="fw-normal text-white">Translated Joke:</span>{" "}
+          <small className="fw-light text-white">{translatedJoke}</small>
         </p>
       </div>
-
-      <button
-        onClick={() => setDetecting(true)}
-        className="mt-4 px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300"
-      >
-        🔄 Detect Again
-      </button>
-
-      <button
-        onClick={() => setLanguage(language === "en" ? "hi" : "en")}
-        className="mt-4 px-5 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-300"
-      >
-        {language === "en" ? "🇮🇳 Translate to Hindi" : "🇺🇸 Translate to English"}
-      </button>
     </div>
   );
 };
 
 export default FaceDetection;
-
